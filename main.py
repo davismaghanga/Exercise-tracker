@@ -34,47 +34,48 @@ def calculate_calories(exercise, duration_minutes, weight_kg=DEFAULT_WEIGHT_KG):
 
 # ==== MAIN WORKFLOW ====
 def main():
-    print("🏋️ Manual Exercise Tracker (No API)")
-    print("Paste structured exercise JSON like below:\n")
-    print('[{"exercise": "running", "duration_minutes": 30}]\n')
+    print("🏋️ Manual Exercise Tracker")
+    print("Enter your exercise type and duration (or type 'q' to quit)\n")
 
     while True:
-        user_input = input("Paste JSON (or 'q' to quit):\n> ")
-        if user_input.strip().lower() in ['q', 'quit', 'exit']:
+        exercise = input("Exercise: ").strip()
+        if exercise.lower() in ['q', 'quit', 'exit']:
+            break
+
+        duration_input = input("Duration in minutes: ").strip()
+        if duration_input.lower() in ['q', 'quit', 'exit']:
             break
 
         try:
-            exercises = json.loads(user_input)
-        except json.JSONDecodeError:
-            print("❌ Invalid JSON. Try again.\n")
+            duration = int(float(duration_input))  # handles '20', '20.0', etc.
+        except ValueError:
+            print("❌ Invalid duration. Please enter a number.\n")
             continue
 
+        # Compose the structured JSON internally
+        exercise_data = {
+            "exercise": exercise,
+            "duration_minutes": duration
+        }
+
+        # Calculate calories
+        calories = calculate_calories(exercise_data["exercise"], exercise_data["duration_minutes"])
+
+        # Timestamp
         now = datetime.now()
-        for entry in exercises:
-            exercise = entry.get("exercise")
-            duration_raw = entry.get("duration_minutes", 0)
+        row = [
+            now.strftime("%Y-%m-%d"),
+            now.strftime("%H:%M"),
+            exercise_data["exercise"],
+            f"{exercise_data['duration_minutes']} minutes",
+            calories
+        ]
 
-            try:
-                duration = int(float(duration_raw))  # handles "20", "20.0", even 20.5
-            except (ValueError, TypeError):
-                print(f"⚠️ Invalid duration value: {duration_raw}. Defaulting to 0.")
-                duration = 0
-            calories = calculate_calories(exercise, duration)
-
-            row = [
-                now.strftime("%Y-%m-%d"),
-                now.strftime("%H:%M"),
-                exercise,
-                f"{duration} minutes",
-                calories
-            ]
-
-            try:
-                SHEET.append_row(row)
-                print(f"✅ Logged: {exercise}, {duration} min, {calories} cal")
-            except Exception as e:
-                print("❌ Error writing to Google Sheets:", str(e))
-        print()
+        try:
+            SHEET.append_row(row)
+            print(f"✅ Logged: {exercise}, {duration} min, {calories} cal\n")
+        except Exception as e:
+            print("❌ Error writing to Google Sheets:", str(e))
 
 if __name__ == "__main__":
     main()
